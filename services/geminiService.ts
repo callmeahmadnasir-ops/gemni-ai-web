@@ -1,50 +1,49 @@
-import { GoogleGenAI } from "@google/genai";
 
-let ai: GoogleGenAI | null = null;
-
-/**
- * Lazily initializes and returns the GoogleGenAI client instance.
- * This prevents the app from crashing on load if the API key is not configured.
- * @returns {GoogleGenAI} The initialized GoogleGenAI client.
- */
-const getAiClient = (): GoogleGenAI => {
-  if (ai) {
-    return ai;
-  }
-
-  // Assume process.env.API_KEY is available in the environment
+export const generateImages = async (prompt: string, numberOfImages: number): Promise<string[]> => {
   const API_KEY = process.env.API_KEY;
 
   if (!API_KEY) {
-    throw new Error("API_KEY environment variable is not set.");
+    throw new Error("API_KEY environment variable is not set. Please set it to your OpenRouter key.");
   }
 
-  ai = new GoogleGenAI({ apiKey: API_KEY });
-  return ai;
-};
+  const openRouterApiUrl = "https://openrouter.ai/api/v1/images/generations";
 
-
-export const generateImages = async (prompt: string, numberOfImages: number): Promise<string[]> => {
   try {
-    const client = getAiClient();
-    const response = await client.models.generateImages({
-      model: 'imagen-4.0-generate-001',
-      prompt: prompt,
-      config: {
-        numberOfImages: numberOfImages,
-        outputMimeType: 'image/jpeg',
-        aspectRatio: '1:1',
+    const response = await fetch(openRouterApiUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${API_KEY}`,
+        'Content-Type': 'application/json',
+        // Recommended headers for OpenRouter to identify your app
+        'HTTP-Referer': `${window.location.protocol}//${window.location.host}`,
+        'X-Title': 'AI Image Generator',
       },
+      body: JSON.stringify({
+        model: 'google/imagen-3.0', // Switched to a model available on OpenRouter
+        prompt: prompt,
+        n: numberOfImages,
+        response_format: 'b64_json', // Request base64 encoded image data
+        aspect_ratio: '1:1', // The app is designed for square images
+      }),
     });
 
-    if (!response.generatedImages || response.generatedImages.length === 0) {
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('OpenRouter API error response:', errorData);
+      throw new Error(`API Error (${response.status}): ${errorData.error?.message || 'Failed to fetch from OpenRouter.'}`);
+    }
+
+    const data = await response.json();
+
+    if (!data.data || data.data.length === 0) {
       throw new Error("The API did not return any images.");
     }
     
-    return response.generatedImages.map(img => img.image.imageBytes);
+    // OpenRouter returns image data in the `b64_json` field
+    return data.data.map((img: { b64_json: string }) => img.b64_json);
 
   } catch (error) {
-    console.error("Error generating images:", error);
+    console.error("Error generating images via OpenRouter:", error);
     if (error instanceof Error) {
         throw new Error(`Failed to generate images: ${error.message}`);
     }
