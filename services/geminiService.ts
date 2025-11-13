@@ -1,17 +1,33 @@
 import { GoogleGenAI } from "@google/genai";
 
-// Assume process.env.API_KEY is available in the environment
-const API_KEY = process.env.API_KEY;
+let ai: GoogleGenAI | null = null;
 
-if (!API_KEY) {
-  throw new Error("API_KEY environment variable is not set.");
-}
+/**
+ * Lazily initializes and returns the GoogleGenAI client instance.
+ * This prevents the app from crashing on load if the API key is not configured.
+ * @returns {GoogleGenAI} The initialized GoogleGenAI client.
+ */
+const getAiClient = (): GoogleGenAI => {
+  if (ai) {
+    return ai;
+  }
 
-const ai = new GoogleGenAI({ apiKey: API_KEY });
+  // Assume process.env.API_KEY is available in the environment
+  const API_KEY = process.env.API_KEY;
+
+  if (!API_KEY) {
+    throw new Error("API_KEY environment variable is not set.");
+  }
+
+  ai = new GoogleGenAI({ apiKey: API_KEY });
+  return ai;
+};
+
 
 export const generateImages = async (prompt: string, numberOfImages: number): Promise<string[]> => {
   try {
-    const response = await ai.models.generateImages({
+    const client = getAiClient();
+    const response = await client.models.generateImages({
       model: 'imagen-4.0-generate-001',
       prompt: prompt,
       config: {
