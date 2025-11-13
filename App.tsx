@@ -74,7 +74,7 @@ const App: React.FC = () => {
         <div className="text-center max-w-3xl mx-auto mb-10">
           <h2 className="text-2xl md:text-3xl font-semibold text-gray-700 mb-3">Bring Your Imagination to Life</h2>
           <p className="text-base md:text-lg text-gray-600">
-            Unleash your creativity. Transform your ideas into stunning, high-quality images with the power of Gemini AI. Whether you're a designer, a marketer, or just exploring, our tool brings your vision to life in seconds. Just type a prompt and watch the magic happen.
+            Unleash your creativity. Transform your ideas into stunning, high-quality images with the power of AI. Whether you're a designer, a marketer, or just exploring, our tool brings your vision to life in seconds. Just type a prompt and watch the magic happen.
           </p>
         </div>
 
@@ -158,7 +158,7 @@ const App: React.FC = () => {
       </main>
 
       <footer className="w-full text-center py-8">
-        <p className="text-sm text-gray-500 animate-fade-in-up">Powered by Gemini. Designed by Ahmad 🇵🇰.</p>
+        <p className="text-sm text-gray-500 animate-fade-in-up">Powered by Google Imagen 4. Designed by Ahmad 🇵🇰.</p>
       </footer>
     </div>
   );
