@@ -1,9 +1,21 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Sparkles, Download, Wand2 } from 'lucide-react';
 import { generateImages } from './services/geminiService';
 import { GeneratedImage } from './types';
 import Spinner from './components/Spinner';
 import WhatsAppPopup from './components/WhatsAppPopup';
+
+// Fix for TypeScript error: "Subsequent property declarations must have the same type" for window.aistudio
+interface AIStudio {
+  hasSelectedApiKey: () => Promise<boolean>;
+  openSelectKey: () => Promise<void>;
+}
+
+declare global {
+  interface Window {
+    aistudio: AIStudio;
+  }
+}
 
 const App: React.FC = () => {
   const [prompt, setPrompt] = useState<string>('');
@@ -12,6 +24,24 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [images, setImages] = useState<GeneratedImage[]>([]);
   const [showWhatsAppPopup, setShowWhatsAppPopup] = useState<boolean>(true);
+  const [hasApiKey, setHasApiKey] = useState<boolean>(false);
+  const [isCheckingApiKey, setIsCheckingApiKey] = useState<boolean>(true);
+
+  useEffect(() => {
+    const checkApiKey = async () => {
+      try {
+        if (await window.aistudio.hasSelectedApiKey()) {
+          setHasApiKey(true);
+        }
+      } catch (e) {
+        console.error("Error checking for API key:", e);
+        setError("Could not verify API key status. Please refresh the page.");
+      } finally {
+        setIsCheckingApiKey(false);
+      }
+    };
+    checkApiKey();
+  }, []);
 
   const handleGenerateClick = useCallback(async () => {
     if (!prompt.trim()) {
@@ -32,11 +62,29 @@ const App: React.FC = () => {
       setImages(newImages);
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'An unexpected error occurred.';
-      setError(errorMessage);
+       if (errorMessage.includes("API key not valid") || errorMessage.includes("Requested entity was not found")) {
+        setError("Your API key is invalid. Please select a valid key to continue.");
+        setHasApiKey(false); // Reset key state to prompt re-selection
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setIsLoading(false);
     }
   }, [prompt, numImages]);
+  
+  const handleSelectKey = async () => {
+    try {
+      await window.aistudio.openSelectKey();
+      // Assume success and update UI immediately to avoid race conditions.
+      setHasApiKey(true);
+      setError(null); // Clear previous errors
+    } catch (e) {
+      console.error("Could not open API key selection:", e);
+      setError("Failed to open the API key selection dialog.");
+    }
+  };
+
 
   const handleDownload = (src: string, imagePrompt: string, index: number) => {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -57,6 +105,46 @@ const App: React.FC = () => {
   };
 
   const imageOptions = Array.from({ length: 4 }, (_, i) => i + 1);
+
+  if (isCheckingApiKey) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex justify-center items-center">
+        <Spinner />
+      </div>
+    );
+  }
+  
+  if (!hasApiKey) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col justify-center items-center p-4 text-center">
+        <div className="max-w-md w-full bg-white p-8 rounded-xl shadow-lg border border-gray-200">
+          <Sparkles className="w-12 h-12 text-gray-800 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">Welcome to AI Image Generator</h1>
+          <p className="text-gray-600 mb-6">
+            To start generating images, please select your Google AI API key.
+          </p>
+          <button
+            onClick={handleSelectKey}
+            className="w-full bg-gray-800 text-white font-semibold py-3 px-8 rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 flex justify-center items-center gap-2"
+          >
+            Select API Key
+          </button>
+           {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative mt-6 text-left" role="alert">
+              <strong className="font-bold">Error: </strong>
+              <span className="block sm:inline">{error}</span>
+            </div>
+          )}
+          <p className="text-xs text-gray-500 mt-6">
+            For information about billing, please visit the{' '}
+            <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-600">
+              Gemini API billing documentation
+            </a>.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 flex flex-col items-center p-4 sm:p-6 md:p-8">
