@@ -1,0 +1,5 @@
+{
+  "name": "AI Image Generator",
+  "description": "A modern, minimalist web application that generates images from text prompts using the Gemini API. It features a clean black and white design, allows users to select the number of images to generate, and provides an easy one-click download for each image.",
+  "requestFramePermissions": []
+}
